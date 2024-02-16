@@ -1,0 +1,2 @@
+# knusccbot
+KNU SCC bot
