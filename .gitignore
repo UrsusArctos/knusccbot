@@ -1,5 +1,8 @@
 #
 .vscode
+*.code-workspace
 #
 sccbot_config.json
+#
+*.log.gz
 #

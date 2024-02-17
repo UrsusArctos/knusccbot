@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"projects/knusccbot/internal/kbconfig"
+	"projects/knusccbot/internal/kblogic"
 	"time"
 
 	"github.com/UrsusArctos/dkit/pkg/aegisql"
@@ -26,7 +27,7 @@ type (
 		Config      kbconfig.TKNUSCCConfig
 		SQLDB       aegisql.TAegiSQLDB
 		Bot         kotobot.TKotoBot
-		//Logic       dekalogic.TDekalogic
+		KBLogic     kblogic.TKBLogic
 	}
 )
 
@@ -60,16 +61,19 @@ func (KB *TKNUSCCBot) BotInit() (err error) {
 					KB.Bot, errInit = kotobot.NewInstance(svalue)
 					if errInit == nil {
 						KB.Bot.ParseMode = kotobot.PMPlainText
+						KB.Bot.CallbackHandler = KB.KBLogic.CallbackDispatcher
+						KB.Bot.MessageHandler = KB.KBLogic.MessageDispatcher
+						// This ought to be the last command during initialization
 						KB.Bot.Updates_StartWatch()
 						KB.Logger.LogEventInfo(fmt.Sprintf("Bot started as @%s", KB.Bot.BotInfo.UserName))
 						// TG Bot post-init
-						// KB.Bot.MessageHandler = KB.Logic.MessageDispatcher
-						// KB.Bot.CallbackHandler = KB.Logic.CallbackDispatcher
+						KB.KBLogic.Logger = &KB.Logger
+						KB.KBLogic.Bot = &KB.Bot
+						KB.KBLogic.Config = &KB.Config
+						KB.KBLogic.SQLDB = &KB.SQLDB
+
 						// KB.Logic.RandGen = rand.New(rand.NewSource(time.Now().UnixNano()))
-						// KB.Logic.Logger = &KB.Logger
-						// KB.Logic.SQLDB = &KB.SQLDB
-						// KB.Logic.Config = &KB.Config
-						// KB.Logic.Bot = &KB.Bot
+
 						// Load Dekalogic operational data
 						// svalue, errGetVal = FB.Config.GetDBConfigValue(FB.SQLDB, fit2config.KeyHelpDesk)
 						// slvalue, errGetSVal := FB.Config.GetDBConfigValue(FB.SQLDB, fit2config.KeyHelpDeskLegacy)
@@ -116,23 +120,23 @@ func (KB *TKNUSCCBot) BotMain() (err error) {
 func main() {
 	const strExiting = "Exiting"
 	// Init daemon
-	fitbot := TKNUSCCBot{LinuxDaemon: daemonizer.NewLinuxDaemon(projectName)}
-	defer fitbot.LinuxDaemon.Close()
-	fitbot.LinuxDaemon.FuncInit = fitbot.BotInit
-	fitbot.LinuxDaemon.FuncClose = fitbot.BotClose
-	fitbot.LinuxDaemon.FuncMain = fitbot.BotMain
+	sccbot := TKNUSCCBot{LinuxDaemon: daemonizer.NewLinuxDaemon(projectName)}
+	defer sccbot.LinuxDaemon.Close()
+	sccbot.LinuxDaemon.FuncInit = sccbot.BotInit
+	sccbot.LinuxDaemon.FuncClose = sccbot.BotClose
+	sccbot.LinuxDaemon.FuncMain = sccbot.BotMain
 	// Init logger
 	var enfac uint8 = logmeow.FacFile
-	if fitbot.LinuxDaemon.Foreground {
+	if sccbot.LinuxDaemon.Foreground {
 		enfac |= logmeow.FacConsole
 	}
-	fitbot.Logger = logmeow.NewLogMeow(projectName, enfac, fitbot.LinuxDaemon.LogPath)
-	defer fitbot.Logger.Close()
+	sccbot.Logger = logmeow.NewLogMeow(projectName, enfac, sccbot.LinuxDaemon.LogPath)
+	defer sccbot.Logger.Close()
 	// Run daemon
-	derror := fitbot.LinuxDaemon.Run()
+	derror := sccbot.LinuxDaemon.Run()
 	if derror != nil {
-		fitbot.Logger.LogEventError(fmt.Sprintf("%s: %v", strExiting, derror))
+		sccbot.Logger.LogEventError(fmt.Sprintf("%s: %v", strExiting, derror))
 	} else {
-		fitbot.Logger.LogEventInfo(strExiting)
+		sccbot.Logger.LogEventInfo(strExiting)
 	}
 }
